@@ -2,9 +2,10 @@ import hmac
 import hashlib
 import logging
 import requests
+from requests import ConnectionError
+from urllib.parse import urlencode
 import time
 import os
-from urllib.parse import urlencode
 
 
 ENDPOINT = "https://www.binance.com"
@@ -27,11 +28,17 @@ def request(method, path, params=None):
     :param path: URL path
     :param params: additional request parameters
     """
-    resp = requests.request(method, ENDPOINT + path, params=params)
-    data = resp.json()
-    if "msg" in data:
-        logging.error(data['msg'])
-    return data
+    try:
+        resp = requests.request(method, ENDPOINT + path, params=params)
+        data = resp.json()
+        if "msg" in data:
+            logging.error(data['msg'])
+            return {}
+        else:
+            return data
+    except ConnectionError as e:
+        logging.error(e)
+        return {}
 
 
 def signedRequest(method, path, params):
@@ -104,12 +111,13 @@ def balances():
 def price(symbol=''):
     """
     Get latest prices for one or all symbols.
-    :param symbol: currency symbol i.e.g BNBBTC, if left empty returns last price for all symbols
+    :param symbol: currency symbol i.e.g ANTBTC, if left empty returns last price for all symbols
     """
     if symbol == "":
         params = {}
     else:
+        symbol = symbol.replace("-", "")
+        symbol = symbol.upper()
         params = {"symbol": symbol}
     data = request("GET", "/api/v3/ticker/price", params)
     return data
-
